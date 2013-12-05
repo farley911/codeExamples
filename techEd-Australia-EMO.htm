@@ -1,0 +1,256 @@
+<script language="javascript" type="text/javascript">
+	$(function(){
+		$("#email").focus(function(){
+			if($(this).val() == 'Email'){
+				$(this).val('');
+			}
+		});
+		
+		if (getParameterByName('status') == 'returning'){
+			$('#loginWrapper').css('display','none');
+			$('#retrieving').css('display','block');
+			retrieveAttendee();
+		}	
+		
+	});
+		
+	function getParameterByName(name)
+	{
+		name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+		var regexS = "[\\?&]" + name + "=([^&#]*)";
+		var regex = new RegExp(regexS);
+		var results = regex.exec(window.location.search);
+		if(results == null)
+			return "";
+		else
+			return decodeURIComponent(results[1].replace(/\+/g, " "));
+	}
+	
+	function login(){
+		var email = $("#email").val();
+		var pw = $("#password").val();
+		if (email == "" || email == "Email" || pw == "") { alert('You must enter both your email and password');  }
+		$("#submitWrapper").html("<h1 style='margin:0; padding:0;'>Processing...</h1>");
+		$.ajax({
+			type: "POST",
+		   // dataType: "xml",
+			url: "https://dynamicevents.emeetingsonline.com/emeetings/dynamicevents/Registrationpaperservice.asp?meetingid=435&clientpassword=" + pw + "&email=" + email,
+			success: successgetattendee,
+			error: function (request, status, error) {
+				alert(request + "//" + status +"//"+error);
+			}
+		});		
+	}
+	
+	function successgetattendee(xml) {			
+		if($(xml).find("AMNNO").length > 0){
+			$(xml).find("AMNNO").each(function (i) {
+				var amnno = $(this).text();
+				var dataStr;
+				if (i == 0){
+					dataStr = "<Root><Amnno>"+amnno+"</Amnno><Fields><Field Name='AMNNO'/><Field Name='AMCFNM'/><Field Name='AMCLNM'/><Field Name='AMCBEMAIL'/><Field Name='AMCMSC48'/><Field Name='AMCDIETCMT'/><Field Name='AMCMSC1'/><Field Name='AMCMSC15'/></Fields></Root>";
+				} else {
+					dataStr = "<Root><Amnno>"+amnno+"</Amnno><Fields><Field Name='AMNNO'/><Field Name='AMCBEMAIL'/><Field Name='AMCDIETCMT'/><Field Name='AMCMSC1'/><Field Name='AMCMSC15'/></Fields></Root>";
+				}
+				$.ajax({
+					type: "POST",
+					data:dataStr,
+					url: "https://dynamicevents.emeetingsonline.com/emeetings/dynamicevents/getattendee.asp",
+					success: successattendee,
+					error: function (request, status, error) {
+						alert(request + "//" + status + "//" + error);
+					}
+				});
+			});
+			setTimeout(function(){
+				$("#mySessions").tablesorter({ sortList: [[0,0]] });
+			}, 200);
+		} else {
+			$("#submitWrapper").html('<input type="button" value="Sign in" class="clsbutton" onClick="login()" id="submitBtn" />');
+			alert("We're sorry, but either the password you entered is incorrect or you have not submitted any sessions yet. If you need to reset your password, please email aute13@microsoft.com for assistance.");	
+		}
+	}
+	
+	function successattendee(xml) {
+		var html = "";
+		var id, fnm, lnm, email, pwd, status, txt;
+		if ($(xml).find("Field").length == 5){
+			$(xml).find("Field").each(function (i) {
+				switch (i){
+					case 0:
+						id = $(this).text();
+						break;
+					case 1:
+						email = $(this).text();
+						break;
+					case 2:
+						txt = $(this).text().replace('%u2013','-').replace('%u201C','"').replace('%u201D','"').replace("%u2018","'").replace("%u2019","'");
+						html = html + "<tr><td>" + decodeURIComponent(txt) + "</td>";
+						break;
+					case 3:
+						txt = $(this).text().replace('%u2013','-').replace('%u201C','"').replace('%u201D','"').replace("%u2018","'").replace("%u2019","'");
+						html = html + "<td>" + decodeURIComponent(txt) + "</td>";
+						break;
+					case 4:
+						html = html + "<td class='" + $(this).text() + "'>" + $(this).text() + "</td>";
+						break;
+				}
+			});
+		} else {
+			$(xml).find("Field").each(function (i) {
+				switch (i){
+					case 0:
+						id = $(this).text();
+						break;
+					case 1:
+						fnm = $(this).text();
+						break;
+					case 2:
+						lnm = $(this).text();
+						break;
+					case 3:
+						email = $(this).text();
+						break;
+					case 4:
+						pwd = $(this).text();
+						break;
+					case 5:
+						txt = $(this).text().replace('%u2013','-').replace('%u201C','"').replace('%u201D','"').replace("%u2018","'").replace("%u2019","'");
+						html = html + "<tr><td>" + decodeURIComponent(txt) + "</td>";
+						break;
+					case 6:
+						txt = $(this).text().replace('%u2013','-').replace('%u201C','"').replace('%u201D','"').replace("%u2018","'").replace("%u2019","'");
+						html = html + "<td>" + decodeURIComponent(txt) + "</td>";
+						break;
+					case 7:
+						html = html + "<td class='" + $(this).text() + "'>" + $(this).text() + "</td>";
+						break;
+				}
+			});
+			$('input[name=btnGrpMem]').attr('onclick','window.location.href="https://dynamicevents.emeetingsonline.com/emeetings/websitev2.asp?mmnno=435&pagename=SITE295319&pagesections=CLEAR&grpno=' + id + '&carryfwd=Y&amnnocfwd=' + id + '&amnno=' + id + '"');
+		}
+		html = html + "<td></td></tr>";
+		$("#mySessions tbody").html($("#mySessions tbody").html() + html);
+		$("#loginWrapper").css("display","none");		
+		$("#submitWrapper").html('<input type="button" value="Sign in" class="clsbutton" onClick="login()" id="submitBtn" />');
+		$('#retrieving').css('display','none');
+		$("#catalog").css("display","block");
+	}
+	
+	function retrieveAttendee(){
+		var amnno = getParameterByName('amnno');
+		var dataStr;
+			dataStr = "<Root><Amnno>"+amnno+"</Amnno><Fields><Field Name='AMCBEMAIL'/><Field Name='AMCMSC48'/></Fields></Root>";
+		$.ajax({
+			type: "POST",
+			data:dataStr,
+			url: "https://dynamicevents.emeetingsonline.com/emeetings/dynamicevents/getattendee.asp",
+			success: foundAttendee,
+			error: function (request, status, error) {
+				alert(request + "//" + status + "//" + error);
+			}
+		});
+	}
+	
+	function foundAttendee(xml){
+		var email, pwd;
+		$(xml).find("Field").each(function (i) {
+			switch (i){
+				case 0:
+					email = $(this).text();
+					break;
+				case 1:
+					pwd = $(this).text();
+					break;
+			}
+		});
+		$('#email').val(email);
+		$('#password').val(pwd);
+		$('#submitBtn').click();
+		
+	}
+</script>
+<style type="text/css">
+	#catalog table{
+		width:700px;
+		margin:0 auto;
+		background-color:#0073c6; 
+		-webkit-border-radius: 10px;
+		-moz-border-radius: 10px;
+		border-radius: 10px;
+	}
+	#catalog thead th:first-child{
+		-webkit-border-top-left-radius: 10px;
+		-moz-border-top-left-radius: 10px;
+		border-top-left-radius:10px;
+		padding-left:30px;
+	}
+	#catalog thead th:last-child{
+		-webkit-border-top-right-radius: 10px;
+		-moz-border-top-right-radius: 10px;
+		border-top-right-radius:10px;
+	}
+	#catalog thead th{
+		background-color:#00204f;
+		font-size:16px;
+		font-weight:bold;
+		text-align:left;
+	}
+	#catalog tbody tr{
+		border-bottom:1px solid white;	
+	}
+	#catalog td:first-child{
+		padding-left:30px;
+	}
+	#catalog td, #catalog th{
+		color:white;
+		padding:5px 10px;
+	}
+	#catalog tr:last-child{
+		padding-bottom:10px;	
+	}
+	#catalog .Pending{
+		color:yellow;	
+	}
+	#catalog .Approved{
+		color:#12ff00;	
+	}
+	#catalog .Declined{
+		color:red;	
+	}
+</style>
+<br /><br />
+<div id="loginWrapper">
+    <h1>Login</h1>
+    <p>Please enter the email address and password you entered when you created your account.</p>
+    <div style="width:660px; margin:0 auto;">
+        <label for="email" style="margin-right:10px; width:70px; display:inline-block;">Email</label><input name="email" id="email" value="Email" style="color:#999" /><br />
+        <label for="password" style="margin-right:10px; width:70px; display:inline-block;">Password</label><input name="password" id="password" value="" type="password" style="color:#999" /><br />
+        <p id="submitWrapper" style="text-align:center; margin:0;">
+        	<input type="button" value="Sign in" class="clsbutton" onClick="login()" id="submitBtn" />
+        </p>
+    </div>
+</div>
+<div id="retrieving" style="display:none;"><h1>Retrieving your sessions...</h1></div>
+<div id="catalog" style="display:none;">
+	<h1>Thank you for submitting your proposed session(s) through the TechEd Australia 2013 Call for Topics site.</h1>
+	<p><strong>Status notifications defined:</strong></p>
+    <p><strong>Approved:</strong> Your session has been approved for TechEd Australia 2013. You will receive an invitation email via TechEd AU Speaker Communications, with instructions regarding registration and next steps.</p> 
+	<p><strong>Declined:</strong> Unfortunately, your proposal has been declined for TechEd Australia, it may be due to the limited number of sessions available for each technology or because it did not align to the messaging defined for TechEd this year.</p>
+	<p><strong>Pending:</strong> Your session(s) is still under consideration by the TechEd AU Track Owners. Final content approval will be finalised no later than 26 July 2013. Please check back again soon.</p>
+	<p>On behalf of TechEd Australia 2013, we’d like to thank you for taking time to draft and submit your<br />proposal(s).</p>
+	<p>Cheers,</p>
+	<p>The TechEd Australia 2013 Team </p>
+	<h1 style="margin-bottom:0;">Your existing sessions</h1>
+    <!--<p style="margin-top:0"><em>You can sort the table by clicking on the row headings.</em></p>-->
+	<table cellspacing="0" colspan="0" border="0" id="mySessions">
+    	<thead>
+        	<th width="35%">Session Title</td>
+            <th width="35%">Track</th>
+            <th width="15%">Status</th>
+            <th width="15%"></th>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <br />
+</div>
