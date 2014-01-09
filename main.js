@@ -1,111 +1,139 @@
-$(function(){
-	// Create hover action for inline images
-	$(".rollover").hover(function(){
-		$(this).attr("src", ($(this).attr("src").substring(0,$(this).attr("src").length-4) + "-hover" + $(this).attr("src").substring($(this).attr("src").length-4, $(this).attr("src").length)));
-	}, function(){
-		$(this).attr("src", ($(this).attr("src").substring(0,$(this).attr("src").length-10) + $(this).attr("src").substring($(this).attr("src").length-4, $(this).attr("src").length)));
-	});
+//Global variables used for responsiveness
+var deviceWidth = $('body').innerWidth();
+var deviceHeight = $('body').innerHeight();
+$video = $('#videoWrapper');
+var videoHTML;
 
-	//Hide online demo button on demo page
-	if(document.URL.indexOf("demo") != -1){
-		$('#onlineDemoWrapper').html('');	
-	}
-	//Hide pricing button on pricing page
-	if(document.URL.indexOf("pricing") != -1){
-		$('#pricingBtnWrapper').html('');	
+$(function(){		
+	//Centers the video on page load
+	centerVideo();
+	
+	//Remove video for mobile device so it doesn't waste data
+	if(isMobile()) {
+		videoHTML = $video.html();
+		$video.html(""); 
 	}
 	
-	//scale items to screen resolution
-	var scale = ($(window).height() / 1080).toString().substring(0,4);
+	setNavHeight();
+		
+	//navHandle click listener
+	$('#navHandle').click(function(){
+		if (isMobile){ animateNav(); }
+	});
 	
-	$(".scaleSize").each(function(){
-		$(this).css("width", (parseInt($(this).css("width").substring(0,($(this).css("width").length-2)))*scale) + "px");
-		if ($(this).hasClass("scalePosition")) {
-			$(this).css("left", (parseInt($(this).css("left").substring(0, $(this).css("left").length-2))) * scale + "px");
-			$(this).css("top", (parseInt($(this).css("top").substring(0, $(this).css("top").length-2))) * scale + "px");
+	//Prevent the user from scrolling to the left when the navigation is expanded on mobile devices to improve UX. Look into adding functionality that closes the navagation instead of scrolling left.
+	var sPos = 0;
+	$(window).scroll(function(){		
+		if (isMobile){
+			var sLeft = $(this).scrollLeft();
+			if(sLeft > sPos){
+				if($('nav#mobile').css('width') == '135px'){
+					$(document).scrollLeft(0);
+				}
+			}
+			sPos = sLeft;
 		}
 	});
 	
-	// Create hover action for background images
-	$(".ro").hover(function(){
-		$(this).toggleClass("hover");
-	}, function() {
-		$(this).toggleClass("hover");
+	//Centers the video every time the browser is resized
+	$(window).resize(function(){		
+		//Reset the device height and width with the updated values
+		deviceWidth = $('body').innerWidth();
+		deviceHeight = $('body').innerHeight();
+		
+		setNavHeight();
+		if(!isMobile() && !videoVisible()){ $video.html(videoHTML); }
+		centerVideo();
 	});
-	
-	// Left nav slide out animation
-	$("#sideNav li").hoverIntent(function(){
-		var li = $("#navFlyouts li[data-i='" + $(this).attr("data-i") + "']");
-		$(this).animate({
-			width: (parseInt(li.attr('data-width')) + 40) + 'px'
-		});
-		li.animate({
-			width: li.attr('data-width') + 'px'
-		});
-	},function(){
-		$(this).animate({
-			width: '34px'
-		});
-		$("#navFlyouts li[data-i='" + $(this).attr("data-i") + "']").animate({
-			width: '0px'
-		});
+
+	//Animates project hover
+	var projectDescHeights = new Array();
+	$('.project>article').each(function(i){
+		$this = $(this);
+		projectDescHeights[i] = $this.css('height');
+		$this.css('height','50px');
 	});
-	
-	// Init Nivo Slider
-	$('#slider').nivoSlider({
-		pauseTime: 5000,
-		effect: 'slideInLeft',
-		prevText: '',
-		nextText: ''
-	});
-	
-	// Respond to contact form status
-	if (getParameterByName("contactStat") == "error"){
-		alert("You have entered the wrong security phrase, please try again.");
-	} else if (getParameterByName("contactStat") == "submitted"){
-		alert("You message has been successfully sent.");
-	}
-	
-	// Calculate/set width for infinite fades.
-	$(".infiniteFade").css("width", (($(window).width()-1000)/2));
+
+	$('.project').hover(
+		function(){
+			$this = $(this);
+			$this.find('img').fadeTo("slow", 0.3);
+			$this.find('article').animate({
+				height:projectDescHeights[$this.data('id')]
+			},1000);
+		}, function(){
+			$this = $(this);
+			$this.find('img').fadeTo("slow",1)
+			$this.find('article').animate({
+				height:'50px'
+			},1000);
+		}
+	);
 });
 
-// Resize elements when the window size changes
-$(window).resize(function(){
-		var scale = ($(window).height() / 1080).toString().substring(0,4);
-		
-		$(".scaleSize").each(function(){			
-			$(this).css("width", $(this).attr("data-origWidth")*scale + "px");
-			if ($(this).hasClass("scalePosition")) {
-				$(this).css("left", $(this).attr("data-origX") * scale + "px");
-				$(this).css("top", $(this).attr("data-origY") * scale + "px");
-			}
-		});
-		
-		// Calculate/set width for infinite fades.
-		$(".infiniteFade").css("width", (($(window).width()-1000)/2));
-});
-
-// Scroll function
-function scrollDown(){
-	$('body,html').animate({
-		scrollTop: window.pageYOffset + $(window).height()
-	}, 500);
+function isMobile(){
+	return deviceWidth <= 768 ? true : false;	
 }
 
-function clearInput(id, defaultVal){
-	$("#"+id).removeClass("error");
-	if ($("#" + id).val() == defaultVal) {	$("#" + id).val(""); }
+function videoVisible(){
+	return $video.html() != "" ? true : false;
 }
 
-function getParameterByName(name)
-{
-  name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
-  var regexS = "[\\?&]" + name + "=([^&#]*)";
-  var regex = new RegExp(regexS);
-  var results = regex.exec(window.location.search);
-  if(results == null)
-    return "";
-  else
-    return decodeURIComponent(results[1].replace(/\+/g, " "));
+function animateNav(){
+	var d = $('nav#mobile').css('width') == "135px" ? "0" : "135px";
+	var s = 750;
+	
+	$('nav#mobile').animate({
+		display:'toggle',
+		width: d,
+		left:'-' + d
+	},s);
+	$('header').animate({
+		left:d
+	},s);
+	$('#pages').animate({
+		left:d
+	},s);	
+}
+
+function setNavHeight(){
+	if(isMobile()){ $('nav#mobile').css('height', $(document).height()  + 'px'); }
+}
+
+//Calculates the width and height of the browser minus scroll bars, then calculates the size of the video scaled to fill the browser. I then test of the width or height will be cropped from the video and if the width is being cropped I adjust the margin-left to center the video.
+function centerVideo(){
+	//Default video size is 596(W) x 336(H)
+	var h = (deviceWidth / 596) * 336;
+	var w = (deviceHeight / 336) * 596;
+	
+	$('#home video').css('margin-left', h < deviceHeight ? '-' + ((w - deviceWidth) / 2) + 'px' : 'auto');
+}
+
+//Angular controllers
+function HeadCtrl($scope){
+	//Creates an array for both navigations
+	$scope.navs = [
+		{id: "mobile"},
+		{id: "standard"}
+	];
+	
+	//Creates an array with all navigation items
+	$scope.pages = [
+		{href: "AboutMe", text: "About Me"},
+		{href: "Portfolio", text: "Portfolio"},
+		{href: "Skills", text: "Skills"},
+		{href: "Contact", text: "Contact"}
+	];
+}
+
+function portfolioCtrl($scope){
+	//Creates array for projects
+	$scope.projects = [
+		{src: "hubb", title: "hubb", name: "hubb", desc: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla quis convallis sapien, at auctor lorem. Ut accumsan mauris non risus convallis, ultricies lacinia purus scelerisque. Proin suscipit elit non odio aliquet, eu dignissim ligula pharetra. Ut ac aliquam ligula, a dignissim quam. Nullam et arcu eu mi vehicula luctus. Nam est urna, vulputate ac leo in, euismod venenatis enim. Proin posuere cursus justo at fermentum. Curabitur mauris eros, pharetra quis venenatis eget, lobortis tempus ligula.", url: "hubb.me"},
+		{src: "mec", title: "Mircosoft Exchange Conference", name: "Microsoft Exchange Conference", desc: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla quis convallis sapien, at auctor lorem. Ut accumsan mauris non risus convallis, ultricies lacinia purus scelerisque. Proin suscipit elit non odio aliquet, eu dignissim ligula pharetra. Ut ac aliquam ligula, a dignissim quam. Nullam et arcu eu mi vehicula luctus. Nam est urna, vulputate ac leo in, euismod venenatis enim. Proin posuere cursus justo at fermentum. Curabitur mauris eros, pharetra quis venenatis eget, lobortis tempus ligula.", url: "iammec.com"},
+		{src: "lync", title: "Microsoft Lync COnference", name: "Microsoft Lync Conference", desc: "The new commer approaches the existing group with, hey dude how wasted am I? which is meet with a courus of, he talked to fast to continue qouteing sheldon cooper", url: "lyncconf.com"},
+		{src: "project", title: "Microsoft Project COnference", name: "Microsoft Project Conference", desc: "The new commer approaches the existing group with, hey dude how wasted am I? which is meet with a courus of, he talked to fast to continue qouteing sheldon cooper", url: "msprojectconference.com"},
+		{src: "pyrex", title: "Pyrex", name: "Pyrex", desc: "The new commer approaches the existing group with, hey dude how wasted am I? which is meet with a courus of, he talked to fast to continue qouteing sheldon cooper", url: "pyrexware.com"},
+		{src: "wtu", title: "Washington Teachers Union", name: "Washington Teachers' Union", desc: "The new commer approaches the existing group with, hey dude how wasted am I? which is meet with a courus of, he talked to fast to continue qouteing sheldon cooper", url: "wtulocal6.org"}
+	];
 }
