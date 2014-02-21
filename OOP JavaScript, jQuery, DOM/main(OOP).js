@@ -49,71 +49,76 @@ var video = function Video(){
 	var _HTML = $('#videoWrapper').html();
 	var _visible = $('#videoWrapper').html() !== "" ? true : false;
 
-	//Define HTML get; set;
-	_video.HTML = function(newHTML){
-		if(newHTML){ _HTML = newHTML; }
-		return _HTML;
-	};
-
-	//Define visible get; set;
-	_video.visible = function(isVisible){
-		if(isVisible){ _visible = isVisible; }
-		return _visible;
-	};
-
-	//Define toggle method
-	_video.toggle = function(){
-		var scrollTop = $('body').scrollTop();
-		if ((device.tablet() || (device.chrome() && scrollTop !== 0)) && _visible){
-			//Remove video for mobile device so it doesn't waste data and reduces GPU load in Chrome
-			_visible = false;
-			$('#videoWrapper').html(""); 
-		} else if ((!device.tablet() || (device.chrome() && scrollTop !== 0)) && !_visible) {
-			//Adds video if it has been removed
-			_visible = true;
-			$('#videoWrapper').html(_HTML);
+	return{
+		//Define HTML get; set;
+		HTML : function(newHTML){
+			if(newHTML){ _HTML = newHTML; }
+			return _HTML;
+		},
+		//Define visible get; set;
+		visible : function(isVisible){
+			if(isVisible){ _visible = isVisible; }
+			return _visible;
+		},
+		//Define toggle method
+		toggle : function(){
+			var scrollTop = $('body').scrollTop();
+			if ((device.tablet() || (device.chrome() && scrollTop !== 0)) && _visible){
+				//Remove video for mobile device so it doesn't waste data and reduces GPU load in Chrome
+				_visible = false;
+				$('#videoWrapper').html(""); 
+			} else if ((!device.tablet() || (device.chrome() && scrollTop !== 0)) && !_visible) {
+				//Adds video if it has been removed
+				_visible = true;
+				$('#videoWrapper').html(_HTML);
+			}
+		},
+		//Define center method
+		center : function(){
+			//Calculates the width and height of the browser minus scroll bars, then calculates the size of the video scaled to fill the browser. I then test of the width or height will be cropped from the video and if the width is being cropped I adjust the margin-left to center the video.
+			if(!device.mobile()){
+				//Default video size is 596(W) x 336(H)
+				var h = (device.width() / 596) * 336;
+				var w = (device.height() / 336) * 596;
+				
+				$('#home video').css('margin-left', h < device.height() ? '-' + ((w - device.width()) / 2) + 'px' : 'auto');
+			}
+		},
+		//Define init method
+		init : function(){
+			//Initilize video object
+			video.toggle();
+			video.center();
 		}
 	};
-
-	//Define center method
-	_video.center = function(){
-		//Calculates the width and height of the browser minus scroll bars, then calculates the size of the video scaled to fill the browser. I then test of the width or height will be cropped from the video and if the width is being cropped I adjust the margin-left to center the video.
-		if(!device.mobile()){
-			//Default video size is 596(W) x 336(H)
-			var h = (device.width() / 596) * 336;
-			var w = (device.height() / 336) * 596;
-			
-			$('#home video').css('margin-left', h < device.height() ? '-' + ((w - device.width()) / 2) + 'px' : 'auto');
-		}
-	};
-
-	//Initilize video object
-	_video.toggle();
-	_video.center();
 }();
 
 //Define Preloader Class
 var preloader = function Preloader(){
-	if(!device.mobile()){
-    var interval;
-		$('body').jpreLoader({
-			splashID: '#jSplash',
-			loaderVPos: '50%',
-			splashVPos: '25%',
-			splashFunction: function(){
-				interval = setInterval(function(){
-					//Aniumate the ... during loading
-					var $loading = $('#loading');
-					$loading.html($loading.html().length < 3 ? $loading.html() + "." : "");
-				}, 500);
+	return{
+		init : function(){
+			if(!device.mobile()){
+		    var interval;
+				$('body').jpreLoader({
+					splashID: '#jSplash',
+					loaderVPos: '50%',
+					splashVPos: '25%',
+					splashFunction: function(){
+						interval = setInterval(function(){
+							//Aniumate the ... during loading
+							var $loading = $('#loading');
+							$loading.html($loading.html().length < 3 ? $loading.html() + "." : "");
+						}, 500);
+					}
+				}, function(){
+					clearInterval(interval);
+				});
+			} else {
+				$('#jSplash').css('display', 'none');
+				$('body').css('display', 'block');
 			}
-		}, function(){
-			clearInterval(interval);
-		});
-	} else {
-		$('#jSplash').css('display', 'none');
-		$('body').css('display', 'block');
-	}	
+		}
+	};	
 }();
 
 //Define Nav class
@@ -399,7 +404,10 @@ var windowObj = function Window(){
 	};
 }();
 
+preloader.init();
+
 $(function(){
+	video.init();
 	nav.init();
 	project.init();
 	skill.setSkillHeight();
