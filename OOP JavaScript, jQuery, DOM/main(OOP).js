@@ -124,16 +124,23 @@ var preloader = function Preloader(){
 //Define Nav class
 var nav = function Nav(){
 	return{
+		//Define pushState method
+		pushState : function(href){
+			if(href == "home") href = "/";
+			history.pushState({id : href}, '', href);
+		},
 		//Define scroll method
 		scroll : function(e, dist){
-			$.scrollTo($("#" + e.data('href')), 1000, {offset: dist});
+			var href = e.data('href');
+			$.scrollTo($("#" + href), 1000, {offset: dist}, {onAfter: nav.pushState(href)});
 		},
 		//Define animate method
 		animate : function(){
-			var d = $('nav#mobile').css('width') == "135px" ? "0" : "135px";
+			var $mobileNav = $('nav#mobile');
+			var d = $mobileNav.css('width') == "135px" ? "0" : "135px";
 			var s = 750;
 			
-			$('nav#mobile').animate({
+			$mobileNav.animate({
 				display:'toggle',
 				width: d
 			},s);
@@ -170,10 +177,15 @@ var nav = function Nav(){
 				var $navAnchor = $(this);
 				var offset = -110;
 
+				//Set the active navigation item
+				$('nav a.active').removeClass('active');
+				$navAnchor.addClass('active');
+
 				if(device.mobile()){ 
 					nav.animate();
 					offset = 0; 
 				}
+
 				nav.scroll($navAnchor, offset);
 			});
 
@@ -258,25 +270,18 @@ var project = function Project(){
 //Define Skills class
 var skill = function Skill(){
 	var _initilized = false;
-	var _visible = false;
+	var _mInitilized = false;
 
 	return{
-		//Define initilized method
+		//Define initilized method get; set;
 		initilized : function(i){
 			if(i) _initilized = i;
 			return _initilized;
 		},
-		//Define visible method
-		visible : function(){
-			//Check is skills are visible
-			$.each($('.page:in-viewport'), function(){
-				var $page = $(this);
-				if($page.attr('id') == "skills"){ 
-					_visible = true; 
-					return false; 
-				}
-			});
-			return _visible;
+		//Define mInitilized method get; set;
+		mInitilized : function(i){
+			if(i) _mInitilized = i;
+			return _mInitilized;
 		},
 		//Define setSkillHeight method
 		setSkillHeight : function(){
@@ -296,32 +301,38 @@ var skill = function Skill(){
 		},
 		//Define animate method
 		init : function(){
-			//Initilize skills dooughnuts
-			$.each($('.chart>canvas'), function(){
-				var chart = $('#' + $(this).attr('id'));
-				var context = chart.get(0).getContext("2d");
-				var chartObj = new Chart(context).Doughnut([{
-					value: chart.data('value'),
-					color: "#f08800"
-				}, {
-					value: (100 - chart.data('value')),
-					color: "#080a1c"
-				}], {
-					segmentShowStroke: false,
-					percentageInnerCutout: 75,
-					animationEasing: "easeOutQuart"
-				});
-			});
-
-			//Initilize skills bars
-			$.each($('.chart .barWrapper div'), function(){
-				var $skillBar = $(this);
-				$skillBar.animate({
-					width: $skillBar.data('value') + "%"
-				}, 1000);
-			});
-
-			_initilized = true;
+			if (device.mobile()){
+				//Initilize skills bars
+				if(!_mInitilized && windowObj.pageVisible("skills")){
+					$.each($('.chart .barWrapper div'), function(){
+						var $skillBar = $(this);
+						$skillBar.animate({
+							width: $skillBar.data('value') + "%"
+						}, 1000);
+					});
+					_mInitilized = true;
+				}
+			} else {
+				if(!_initilized && windowObj.pageVisible("skills")){
+					//Initilize skills dooughnuts
+					$.each($('.chart>canvas'), function(){
+						var chart = $('#' + $(this).attr('id'));
+						var context = chart.get(0).getContext("2d");
+						var chartObj = new Chart(context).Doughnut([{
+							value: chart.data('value'),
+							color: "#f08800"
+						}, {
+							value: (100 - chart.data('value')),
+							color: "#080a1c"
+						}], {
+							segmentShowStroke: false,
+							percentageInnerCutout: 75,
+							animationEasing: "easeOutQuart"
+						});
+					});
+					_initilized = true;
+				}
+			};
 		},
 		reset : function(){
 			$('#moreBtn').unbind('click').html('View More');
@@ -333,12 +344,30 @@ var skill = function Skill(){
 //Define Window class
 var windowObj = function Window(){
 	var _window = $(window);
+	var _visible = false;
 	var _timeout = false;
 	var _delta = 200;
 	var _rtime;
 
-	return{
+	return{		
+		//Define visible method
+		pageVisible : function(pageId){
+			//Check is skills are visible
+			$.each($('.page:in-viewport'), function(){
+				var $page = $(this);
+				if($page.attr('id') == pageId){ 
+					_visible = true; 
+					return false; 
+				}
+			});
+			return _visible;
+		},
 		scrollEnd : function(){
+			//call functions here so they don't wait for the user to stop scrolling before their triggered, this will be called less frequently than the scoll method.
+			skill.init();
+
+			if(!device.mobile()) nav.fadeBG();
+
 			if (new Date() - _rtime < _delta){
 				setTimeout(windowObj.scrollEnd, _delta);
 			} else {
@@ -353,17 +382,11 @@ var windowObj = function Window(){
 			}
 		},
 		scroll : function(){
-			if(!skill.initilized() && skill.visible()){
-				skill.init();
-			}
 			//Throttle scroll call so it waits until the user is done scrolling the window
-			if(!device.mobile()){
-				_rtime = new Date();
-				if(_timeout === false){	
-					_timeout = true;
-					nav.fadeBG();
-					setTimeout(windowObj.scrollEnd, _delta);
-				}
+			_rtime = new Date();
+			if(_timeout === false){	
+				_timeout = true;					
+				setTimeout(windowObj.scrollEnd, _delta);
 			}
 		},
 		resizeEnd : function(){			
@@ -379,6 +402,7 @@ var windowObj = function Window(){
 				video.toggle();
 				video.center();
 				skill.reset();
+				skill.init();
 				skill.setSkillHeight();
 			}
 		},
@@ -400,6 +424,25 @@ var windowObj = function Window(){
 			_window.resize(function(){
 				windowObj.resize();
 			});
+			//scroll to the page is one has been passed in the URL
+			var URL = window.location.pathname;
+			URL = URL.substring(1,URL.length);
+
+			if(URL != "") $('nav a[data-href=' + URL + ']').trigger('click');
+
+			//button hover transition
+			$('button').hover(
+				function(){
+					$(this).animate({
+						backgroundColor: "#181818"
+					}, 500);
+				},
+				function(){
+					$(this).animate({
+						backgroundColor: "#282828"
+					}, 500);
+				}
+			);
 		}
 	};
 }();
@@ -411,8 +454,6 @@ $(function(){
 	nav.init();
 	project.init();
 	skill.setSkillHeight();
-	if(!skill.initilized() && skill.visible()){
-		skill.init();
-	}	
+	skill.init();
 	windowObj.init();
 });
